@@ -1,0 +1,61 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import butter, lfilter
+
+# 1. Configuración de la señal (1000 muestras por segundo)
+fs = 1000  
+t = np.linspace(0, 1, fs, endpoint=False)
+
+# Creamos una señal compuesta: 
+# Una onda suave (5Hz) + Ruido eléctrico (50Hz) + Ruido agudo (120Hz)
+sig_5hz = np.sin(2 * np.pi * 5 * t)
+sig_50hz = 0.6 * np.sin(2 * np.pi * 50 * t)
+sig_120hz = 0.4 * np.sin(2 * np.pi * 120 * t)
+signal = sig_5hz + sig_50hz + sig_120hz
+
+# 2. Función para diseñar y aplicar el filtro Butterworth
+def butter_apply(data, cutoff, fs, btype, order=5):
+    nyq = 0.5 * fs
+    # Si es Pasa Bandas, cutoff debe ser una lista [bajo, alto]
+    if isinstance(cutoff, list):
+        normal_cutoff = [c / nyq for c in cutoff]
+    else:
+        normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype=btype, analog=False)
+    return lfilter(b, a, data)
+
+# 3. Procesamiento de los 3 filtros
+low_filtered = butter_apply(signal, 15, fs, 'low')           # Pasa Bajos
+high_filtered = butter_apply(signal, 40, fs, 'high')         # Pasa Altos
+band_filtered = butter_apply(signal, [45, 55], fs, 'band')   # Pasa Bandas (Aísla el de 50Hz)
+
+# 4. Creación de las gráficas (Subplots)
+plt.figure(figsize=(10, 10))
+
+# Señal Original
+plt.subplot(4, 1, 1)
+plt.plot(t, signal, color='black')
+plt.title("1. Señal Original (Mezcla de 5Hz, 50Hz y 120Hz)")
+plt.grid(True)
+
+# Resultado Pasa Bajos
+plt.subplot(4, 1, 2)
+plt.plot(t, low_filtered, color='blue')
+plt.title("2. Filtro Pasa Bajos (Corte 15Hz): Recuperamos la señal de 5Hz")
+plt.grid(True)
+
+# Resultado Pasa Altos
+plt.subplot(4, 1, 3)
+plt.plot(t, high_filtered, color='red')
+plt.title("3. Filtro Pasa Altos (Corte 40Hz): Eliminamos la base de 5Hz")
+plt.grid(True)
+
+# Resultado Pasa Bandas
+plt.subplot(4, 1, 4)
+plt.plot(t, band_filtered, color='green')
+plt.title("4. Filtro Pasa Bandas (45-55Hz): Aislamos solo el ruido de 50Hz")
+plt.xlabel("Tiempo (segundos)")
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
